@@ -1,0 +1,52 @@
+  #Projektverzeichnis
+Literatur/
+orkg-ask-export.csv
+Download+the+journal+article+template+package+(December+2024+version).zip
+Topic Labeling.txt
+sn-article-template/
+Results_Ideen.md
+Discussion_Section.md
+
+# Analysis
+
+Analysis/no_sleep_for_ur_Linux_system.txt
+Analysis/Rplots.pdf
+Analysis/logs/
+Analysis/r_packages.r
+
+Analysis/.venv/
+Analysis/.snakemake/
+
+# qmd-Verzeichnis
+
+## Alte/temporäre Dateien
+AI_parliament_paper/alte Einleitung_AI_parliament.qmd
+AI_parliament_paper/alter header_AI_parliament Kopie.qmd
+AI_parliament_paper/entwürfe.docx
+
+## Render-Output
+AI_parliament_paper/AI_parliament.pdf
+
+## Template
+AI_parliament_paper/sn-basic.bst
+AI_parliament_paper/sn-mathphys-ay.bst
+AI_parliament_paper/sn-vancouver.bst
+AI_parliament_paper/sn-apacite.bst
+AI_parliament_paper/sn-chicago.bst
+AI_parliament_paper/sn-mathphys-num.bst
+AI_parliament_paper/sn-aps.bst
+AI_parliament_paper/sn-jnl.cls
+AI_parliament_paper/sn-nature.bst
+AI_parliament_paper/springer-basic-author-date.csl
+AI_parliament_paper/springer-basic-brackets.csl
+AI_parliament_paper/titlepage.tex
+
+# to big to push in Analysis
+
+
+Analysis/data
+Analysis/Plots
+Analysis/robustness
+
+
+
