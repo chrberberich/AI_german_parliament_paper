@@ -1,0 +1,36 @@
+# torch: install manually with CUDA support, see https://pytorch.org/get-started/locally/
+torch
+sentence-transformers
+
+# Workflow Engine
+snakemake
+
+# Data handling
+pandas
+numpy
+openpyxl
+
+# Data download
+requests
+
+# Text preprocessing
+nltk
+regex
+unicodedata2
+
+# Topic Modeling (BERTopic stack)
+bertopic
+sentence-transformers
+umap-learn
+hdbscan
+scikit-learn
+
+# Visualization
+matplotlib
+
+# robustness (CV-Score)
+gensim
+
+# Jupyter Backend
+ipykernel
+

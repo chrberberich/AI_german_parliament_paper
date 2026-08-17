@@ -1,0 +1,11 @@
+install.packages(c(
+  "tidyverse",
+  "scales",
+  "zoo",
+  "gt",
+  "reticulate",
+  "jsonlite",
+  "kableExtra",
+  "slider",
+  "patchwork"
+))
