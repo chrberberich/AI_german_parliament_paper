@@ -1,6 +1,6 @@
 ---
 title: "Mapping AI Discourse in the German Parliament (2015-2025)"
-subtitle: "Issue Competition across Issue-centred and Issue-embedded Discourse"
+subtitle: "Issue Competition across Issue-Centred and Issue-Embedded Discourse"
 lang: en
 author: 
   - name: Christopher Berberich
@@ -11,14 +11,14 @@ author:
         department: Institut für Soziologie
         city: Leipzig
         country: Germany
-date: 2026-04-13
+date: 2026-08-21
 abstract: |
     This study provides a systematic longitudinal analysis of artificial intelligence discourse in the German Bundestag from 2015 to 2025. Drawing on a corpus of 1,023 AI-related plenary speeches, it applies transformer-based topic modeling (BERTopic) to identify thematic patterns and their variation over time and across parliamentary groups. Punctuated Equilibrium Theory guides the examination of temporal dynamics; Issue Competition Theory informs the analysis of party-political variation. The findings confirm a discontinuous attention dynamic marked by two distinct punctuations coinciding with Germany's National AI Strategy (2018) and the release of ChatGPT (2022). Thematic analysis identifies 14 topics, of which only one treats AI as its primary subject. This leads to the study's central conceptual contribution: the distinction between issue-centric and issue-embedded discourse. While the 2018-2022 period was characterized more by dedicated AI governance debates, the post 2022 phase is characterized by AI's diffusion across existing policy fields as a secondary element. At the party-political level, parliamentary groups systematically emphasize thematic dimensions of AI aligned with their broader political profiles while converging on a shared party-system agenda — a pattern of constrained differentiation consistent with Issue Competition Theory.
 
 format:
   nature-pdf:
     journal:
-      cite-style: springer-basic-author-date.csl
+      cite-style: sn-chicago.bst
     linestretch: 1.5 
     include-in-header:
       text: |
@@ -30,7 +30,6 @@ format:
     
 
 bibliography: references.bib
-csl: springer-basic-author-date.csl
 ---
 
 ```{r}
@@ -137,7 +136,7 @@ BERTopic reduces the dimensionality of these embeddings via UMAP [@mcinnes2020] 
 
 The robustness of this identified topic structure is assessed by a set of different checks. Because of the stochastic nature of UMAP, the first check assesses the stability of the topic structure across multiple runs with different random seeds $s \in [0, 19] \cap \mathbb{N}_0$ using the Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI) as pairwise similarity metrics across runs, as well as topic coherence ($C_V$​), diversity and outlier rate. The second check evaluates the sensitivity of the topic structure to variations in key hyperparameters: the minimum cluster size $m \in \{5, 10, 15, 20, 30, 50\}$ as well as the number of nearest neighbors $k \in \{2, 5, 10, 15, 30, 50\}$ and output dimensions $d \in \{2, 5, 10, 15, 20\}$, assessed by topic coherence, diversity, and outlier rate.
 
-To ensure a high level of transparency and reproducibility, this study uses a fully automated end-to-end pipeline controlled by the workflow management system Snakemake [@mölder2025]. The pipeline covers the entire analysis process: from the automated download of the dataset through data preprocessing, BERTopic modeling and its robustness checks, and statistical analysis, all the way to the rendering of this paper, which automatically incorporates its graphics and figures from the analysis. Most of this pipeline is implemented using Python 3.13, while R 4.6.0 is used for downstream statistical analysis and visualization of model results and Quarto for dynamic reporting. The code is available in a public GitHub repository...
+To ensure a high level of transparency and reproducibility, this study uses a fully automated end-to-end pipeline controlled by the workflow management system Snakemake [@mölder2025]. The pipeline covers the entire analysis process: from the automated download of the dataset through data preprocessing, BERTopic modeling and its robustness checks, and statistical analysis, all the way to the rendering of this paper, which automatically incorporates its graphics and figures from the analysis. Most of this pipeline is implemented using Python 3.13, while R 4.6.0 is used for downstream statistical analysis and visualization of model results and Quarto for dynamic reporting. The code is available in a public GitHub repository https://github.com/chrberberich/AI_german_parliament_paper/tree/main.
 
 ## Operationalization
 
@@ -525,6 +524,6 @@ The conceptualization of the content, data analysis, and argumentation were carr
 
 Hiermit erkläre ich, dass ich die vorliegende Arbeit selbstständig und ohne fremde Hilfe verfasst und keine anderen Hilfsmittel als angegeben verwendet habe. Insbesondere versichere, dass ich alle wörtlichen und sinngemäßen Übernahmen aus anderen Werken als solche kenntlich gemacht habe.
 
-Leipzig, 18.08.2026,
+Leipzig, 19.08.2026,
 
 Christopher Berberich
