@@ -53,7 +53,7 @@ use_virtualenv(venv_path, required = TRUE)
 descriptive <- read_csv("../Analysis/data/descriptive.csv")
 descriptive_corpus <- read_csv("../Analysis/data/descriptive_corpus.csv") 
 n_all_speeches <- descriptive_corpus$n_all_speeches
-n_speeches_ai  <- descriptive_corpus$n_speeches_ai
+n_speeches_ai  <- descriptive_corpus$n_speeches
 n_chunks       <- descriptive_corpus$n_chunks
 chunk_size     <- fromJSON("../Analysis/data/chunk_size.json")$context_words
 n_truncated    <- fromJSON("../Analysis/data/chunk_size.json")$n_truncated
