@@ -24,7 +24,7 @@ If you do not want or cannot do this, you have two options:
 
 1. Run the pipeline on a high-performance computer at your university or research institute
 2. Run it locally using the Windows Subsystem for Linux (WSL), official documentation: https://learn.microsoft.com/en-us/windows/wsl/
-
+3. Run the scripts one after another
 
 Go to [Setup](#Setup).
 
