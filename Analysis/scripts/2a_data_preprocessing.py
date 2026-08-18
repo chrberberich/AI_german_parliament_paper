@@ -419,6 +419,20 @@ words = df_ai["rede_text"].str.split().str.len()
 print("\n=== KI-Reden Statistik ===")
 print(f"Mittel: {words.mean():.0f}, Median: {words.median():.0f}, SD: {words.std():.0f}")
 
+#=========================
+# Export cleaned (non-chunked) AI speeches
+#=========================
+
+words = df_ai["rede_text"].str.split().str.len()
+
+print("\n=== KI-Reden Statistik ===")
+print(f"Mittel: {words.mean():.0f}, Median: {words.median():.0f}, SD: {words.std():.0f}")
+
+# =========================
+# Export cleaned (non-chunked) AI speeches
+# =========================
+df_ai.to_csv("data/n_speeches_ai.csv", index=False, encoding="utf-8")
+
 # =========================
 # Chunking / Context extraction
 # =========================
@@ -492,6 +506,16 @@ with open("data/chunk_size.json", "w") as f:
         "context_words": CONTEXT_WORDS,
         "n_truncated": int(n_truncated)
     }, f)
+
+# =========================
+# Export corpus-level descriptive counts
+# =========================
+descriptive_corpus = pd.DataFrame({
+    "n_all_speeches": [len(df)],
+    "n_speeches": [len(df[df["ai_mention"]])],
+    "n_chunks": [len(df_ai)]
+})
+descriptive_corpus.to_csv("data/descriptive_corpus.csv", index=False, encoding="utf-8")
 
 # =========================
 # Checks
