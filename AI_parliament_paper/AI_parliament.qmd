@@ -1,0 +1,530 @@
+---
+title: "Mapping AI Discourse in the German Parliament (2015-2025)"
+subtitle: "Issue Competition across Issue-centred and Issue-embedded Discourse"
+lang: en
+author: 
+  - name: Christopher Berberich
+    email: c.berberich@studserv.uni-leipzig.de
+    corresponding: true
+    affiliations:
+      - name: Universität Leipzig
+        department: Institut für Soziologie
+        city: Leipzig
+        country: Germany
+date: 2026-04-13
+abstract: |
+    This study provides a systematic longitudinal analysis of artificial intelligence discourse in the German Bundestag from 2015 to 2025. Drawing on a corpus of 1,023 AI-related plenary speeches, it applies transformer-based topic modeling (BERTopic) to identify thematic patterns and their variation over time and across parliamentary groups. Punctuated Equilibrium Theory guides the examination of temporal dynamics; Issue Competition Theory informs the analysis of party-political variation. The findings confirm a discontinuous attention dynamic marked by two distinct punctuations coinciding with Germany's National AI Strategy (2018) and the release of ChatGPT (2022). Thematic analysis identifies 14 topics, of which only one treats AI as its primary subject. This leads to the study's central conceptual contribution: the distinction between issue-centric and issue-embedded discourse. While the 2018-2022 period was characterized more by dedicated AI governance debates, the post 2022 phase is characterized by AI's diffusion across existing policy fields as a secondary element. At the party-political level, parliamentary groups systematically emphasize thematic dimensions of AI aligned with their broader political profiles while converging on a shared party-system agenda — a pattern of constrained differentiation consistent with Issue Competition Theory.
+
+format:
+  nature-pdf:
+    journal:
+      cite-style: springer-basic-author-date.csl
+    linestretch: 1.5 
+    include-in-header:
+      text: |
+        \usepackage{placeins}
+        
+
+    toc: false
+    number-sections: true
+    
+
+bibliography: references.bib
+csl: springer-basic-author-date.csl
+---
+
+```{r}
+#| label: load-data
+#| echo: false
+#| message: false
+
+library(tidyverse)
+library(reticulate)
+library(kableExtra)
+library(jsonlite)
+library(here)
+library(patchwork)
+library(scales)
+
+venv_path <- normalizePath("../Analysis/.venv")
+use_virtualenv(venv_path, required = TRUE)
+
+# Deskriptive Statistiken
+descriptive <- read_csv("../Analysis/data/descriptive.csv")
+descriptive_corpus <- read_csv("../Analysis/data/descriptive_corpus.csv") 
+n_all_speeches <- descriptive_corpus$n_all_speeches
+n_speeches_ai  <- descriptive_corpus$n_speeches_ai
+n_chunks       <- descriptive_corpus$n_chunks
+chunk_size     <- fromJSON("../Analysis/data/chunk_size.json")$context_words
+n_truncated    <- fromJSON("../Analysis/data/chunk_size.json")$n_truncated
+n_per_frak_phase <-read_csv("../Analysis/data/n_per_fraktion_phase.csv")
+
+# Topic Model
+bt <- import("bertopic")
+topic_model <- bt$BERTopic$load("../Analysis/models/topic_model")
+topic_info  <- topic_model$get_topic_info()
+
+repr_docs <- read_csv("../Analysis/data/representative_docs_30.csv")
+
+cfg <- fromJSON("../Analysis/models/main_model_config.json")
+
+```
+
+# Introduction
+
+Artificial intelligence has rapidly moved from a specialized technological field into a salient political issue. This development is reinforced by the increasing diffusion of AI-based systems into everyday life, including private use as well as their growing presence in workplace environments. In parliamentary debates, however, artificial intelligence does not appear as a clearly bounded policy field. Legislative institutions increasingly engage with AI, discussing aspects such as innovation policy, labor markets, security, and ethical governance [@suter2025; @lemke2024; @goldmann2024]. In the 2010s, investments in AI rose internationally [@savage2020]. Driven by the concern of being left behind in the international AI race, Germany adopted its National AI Strategy in 2018 as an alternative to both market-driven US approaches and state-led Chinese ones [@hälterlein2025; @strategi2018]. The public release of large language models, most notably ChatGPT in November 2022, marked the next turning point that brought AI into mainstream political awareness across numerous countries [@suter2025]. In 2024, the EU AI Act [@regulati2024] regulates for the first time the use of AI within the EU by classifying AI applications according to their risk potential and establishing mandatory requirements regarding transparency, security, and human oversight for high-risk systems.
+
+Since politics and its conflicts unfold primarily through the medium of language [@grimmer2013], the political discourse on AI has recently become a growing field of research examining AI across different communicative arenas, including media coverage, policy documents, and parliamentary debates. Analyzing AI coverage in four major English-language outlets between 2010 and 2021, @nguyen2024 identify fourteen distinct emphasis frames and find that media discourse became markedly more critical over time. In a cross-national comparative analysis of how AI is addressed in four parliaments between 2014 and 2024, @suter2025 find that attention surged following the release of ChatGPT; in Switzerland and the European Union, this is primarily driven by ethical and regulatory concerns, whereas economic considerations take center stage in Singapore, and geopolitical aspects do so in the USA.
+
+For Germany specifically, @köstler2022, analyzing government policy documents and newspaper coverage from March 2018 to November 2019, show how the German government's own 'AI made in Germany' narrative strategically foregrounds economic competitiveness while marginalizing alternative visions, a framing that German news media largely reproduce rather than contest. @lemke2024 complement this analysis through discourse network analysis, investigating how policy actors across parties, interest groups, scientific expertise, and public administration define AI as a policy problem in parliamentary debates, government consultations, and newspaper coverage. Their findings reveal that coalition government parties (CDU/CSU and SPD) align their parliamentary interventions with priorities established in the national AI strategy, whereas opposition parties highlight substantially different policy domains. The study demonstrates that governmental capacity to steer a coherent political agenda remains limited, with the overall policy discourse characterized by significant fragmentation across institutional venues and actor types. In a conference paper examining AI narratives in Bundestag plenary debates qualitatively, @goldmann2024 finds that AI is primarily discussed in terms of promotion and regulation, alongside its role as a versatile tool. Taken together, these studies leave two questions open: how thematic patterns in AI-related Bundestag speeches have evolved across the full period since 2015, and how they vary systematically across parliamentary groups.
+
+The political discourse described above can be understood along two analytical dimensions. First, building on punctuated equilibrium theory [@jones2012; @true2007], attention to novel policy issues such as artificial intelligence is unlikely to evolve in a linear fashion, but may instead be characterized by periods of relative stability interrupted by sudden shifts in salience. Furthermore, political actors within parliament may differ systematically in the thematic aspects of AI they emphasize: according to Issue Competition Theory [@green-pedersen2007; @green-pedersen2010; @ivanusch2024], parties strategically stress those issues that align with their established political profiles, competing to shape the party-system agenda while simultaneously seeking to occupy distinct thematic niches. These dimensions suggest that both temporal dynamics and party-political variation are central to understanding how AI is discussed in legislative debates.
+
+Addressing the previously identified gap, this study provides a systematic analysis of artificial intelligence discourse in Bundestag debates. It contributes in two ways. First, it offers a longitudinal perspective on parliamentary AI discourse in Germany from 2015 to 2025, allowing an analysis of temporal dynamics in political attention and changes in thematic contexts. Second, it compares thematic patterns across parliamentary groups, capturing systematic differences in how political actors address AI. For this purpose, the study draws on neural network-based computational text analysis applied to the full corpus of AI-related parliamentary speeches in this time period. Accordingly, the research question can be formulated as follows: What thematic patterns characterize references to artificial intelligence in Bundestag speeches (2015-2025), and how do these vary over time and across parliamentary groups?
+
+# Theoretical Framework
+
+Plenary debates are a particularly suitable site for studying AI discourse, as they provide direct, unmediated access to how elected representatives articulate policy priorities in a publicly visible forum [@suter2025]. The attention that members of the Bundestag pay to AI in their speeches, and the thematic contexts in which this attention appears, can be analyzed by combining two theoretical approaches: first, Punctuated Equilibrium Theory (PET) [@jones2012] for the temporal dimension, and second, Issue Competition Theory [@green-pedersen2007; @green-pedersen2010] for the party-political dimension.
+
+A central premise of this study is that political attention to emerging technologies does not evolve gradually, but rather in discontinuous bursts separated by periods of relative inattention. Punctuated Equilibrium Theory provides a framework for understanding these temporal dynamics of parliamentary attention [@jones2012]. According to PET, political systems are characterized by long periods of stability interrupted by brief episodes of dramatic change, resulting from the interaction of cognitive limits in information processing and institutional frictions that resist incremental adjustment. These episodes are triggered when external signals accumulate sufficient pressure to overcome this resistance — through either a single event or the gradual buildup of information over time. Crucially, however, PET operates at the level of the attention pattern itself and does not generate point-specific predictions about the timing or causes of particular punctuations [@true2007]. The theory instead provides a framework for interpreting observed discontinuities post hoc, identifying whether an observed attention dynamic is consistent with punctuated equilibrium dynamics.
+
+While PET explains the aggregate development of attention over time, Issue Competition Theory accounts for variations across political actors. In their communication, political parties place their emphasis on specific topics in order to position them within public discourse [@budge1983; @petrocik1996; @green-pedersen2007]. Since plenary debates are publicly visible and thus serve as a channel through which parties communicate with voters and the media [@gattermann2013; @maltzman1996], they also function as a strategic arena in which political actors shape party reputation by emphasizing issue priorities beyond electoral campaigns. Recent research has confirmed that this logic applies within parliamentary contexts [@ivanusch2024; @green-pedersen2010].
+
+A further implication of the theory of issue competition concerns the structure of issue attention in general. According to @green-pedersen2010, empirical studies have found that political communication is characterized by issue overlap. Through competition among parties to emphasize their own issues, a party-system agenda emerges that structures subsequent issue attention and constrains parties’ behavior, as they must respond to it while simultaneously seeking to re-emphasize their preferred issues.
+
+Applied to parliamentary AI discourse, this implies that parliamentary groups will prioritize thematic aspects of AI that align with their broader political profiles — for instance, emphasizing economic opportunities, ethical risks, or labor market implications depending on their ideological positioning. Accordingly, systematic differences in the thematic contexts in which AI appears across parliamentary groups are expected to reflect their broader issue priorities, as parties emphasize those dimensions of AI that align with their established political profiles.
+
+Since parties must react if an issue gains greater salience, Issue Competition is subject to a temporal dynamic. @green-pedersen2010 explicitly draw on the assumption of agenda-setting literature [@edwards1999; @soroka2002; @baumgartner2008] which characterized political discourse by inertia. This provides the theoretical bridge between PET and Issue Competition Theory: Given that parties try to connect issues with their own key issues, it can be expected that the AI discourse diversifies across a broader range of thematic contexts, when issue salience increases.
+
+Together, the two frameworks thus structure the empirical analysis: PET guides the examination of temporal dynamics in AI attention, while Issue Competition Theory informs the analysis of systematic differences in thematic emphasis across parliamentary groups.
+
+# Methodology
+
+## Data
+
+The analysis proceeds in three stages, moving from a broad assessment of AI's salience in parliamentary discourse to a fine-grained examination of its thematic contexts across time and political actors.
+
+The data used in this study are drawn from the *Corpus der Plenarprotokolle des Deutschen Bundestages* (CPP-BT), a publicly available dataset of all plenary transcripts of the German Bundestag compiled by @fobbe2026cppbt and archived on Zenodo (Version 2026-01-17, DOI: 10.5281/zenodo.18177196). The corpus covers parliamentary sessions from the years 2013 to 2026; the year 2026 is excluded as it was incomplete at the time of analysis. Since no AI-related speeches were recorded in 2013 and 2014, these years are also excluded from the analysis.
+
+To identify a subset of AI-related speeches that is used for the topic model, a regular expression is applied matching explicit surface forms of the term: Künstliche Intelligenz, Artificial Intelligence, neural networks and their common abbreviations (KI, AI, K.I., A.I.). This approach prioritizes precision over recall: only speeches containing explicit references to AI are included, while speeches addressing related concepts such as algorithmic decision-making or automation without naming AI directly are excluded.
+
+The resulting corpus comprises `r format(n_all_speeches, big.mark = ",", scientific = FALSE)` speeches in total, of which `r n_speeches_ai` contain explicit references to AI. These `r n_speeches_ai` speeches constitute the entire population of the Bundestag's AI discourse during the study period.
+
+```{r}
+#| label: tbl-descriptive
+#| tbl-cap: "Descriptive statistics of AI-related Bundestag speeches"
+#| echo: false
+
+kable(
+  descriptive,
+  booktabs = TRUE,
+  align = "c",
+  col.names = c("Corpus", "N", "Mean", "SD", "Min", "Q1", "Median", "Q3", "Max")
+) |>
+kable_styling(latex_options = "hold_position")
+
+```
+
+The distribution of word counts in AI-related Bundestag speeches is strongly right-skewed (@tbl-descriptive). While the majority of speeches fall within a moderate length range, a small number of outlying speeches are substantially longer. Due to GPU limitations in the text-embedding process, speeches longer than `r 2*chunk_size` words were truncated by extracting only the text windows (up to `r chunk_size` words before and after) surrounding the relevant keywords. This affected `r n_truncated` speeches, while all remaining speeches were processed in full length.
+
+## Topic Modeling
+
+The subset of AI-related speeches is then passed to BERTopic [@grootendorst] to identify latent thematic contexts. Compared to traditional bag-of-words approaches such as LDA and NMF, BERTopic offers advantages in terms of accounting for semantic relationships, the coherence of topics, and flexibility, for example, through subsequent topic reduction [@egger2022; @kaur; @grootendorst].
+
+The selection of embedding models that have a context window sufficiently large for parliamentary speeches and that are well-suited for an almost entirely German-language corpus is limited. The choice fell upon Qwen3-Embedding-0.6B [@zhang2025], which is a large language model based decoder with a context window of 32,000 tokens. According to the multilingual Massive Text Embedding Benchmark [@muennighoff], it outperforms encoder models like multilingual-e5-large-instruct[@wang2024multilingual] and BGE-M3 [@chen] in clustering and semantic text similarity tasks [@qwen/qwe2025]. Prior to computing embeddings, standard parliamentary openings and closing formulas (e.g., salutations and expressions of gratitude) were removed from the speeches to avoid artificial thematic clustering around non-substantive content.
+
+BERTopic reduces the dimensionality of these embeddings via UMAP [@mcinnes2020] before clustering them with HDBSCAN [@mcinnes2017], and labels the resulting clusters through a class-based TF-IDF procedure [@grootendorst]. This approach is unsupervised in the sense that no thematic categories are defined in advance: the topical structure emerges inductively from patterns of semantic similarity in the corpus [@grimmer2013]. The researcher steers the process through hyperparameter tuning and stopword specification. In the present analysis, UMAP was configured with n_neighbors = `r cfg$umap$n_neighbors`, n_components = `r cfg$umap$n_components` and min_dist = `r cfg$umap$min_dist`, while HDBSCAN was parameterized with min_cluster_size = `r cfg$hdbscan$min_cluster_size`, min_samples = `r cfg$hdbscan$min_samples` to control the granularity and stability of the resulting topic clusters. For cluster_selection_method the default 'eom' (excess of mass) was used. The number of topics was set to approximately `r cfg$bertopic$nr_topics`; the model returned `r nrow(topic_info) - 2` coherent topics, one incoherent topic and an outlier cluster (topic -1), which is excluded from substantive interpretation. Stopword removal was implemented at the topic representation stage via the BERTopic vectorizer, using the NLTK stopword list [@loper2002] extended by a manually curated set of custom stopwords. This configuration affects the c-TF-IDF-based topic representation, thereby refining topic-word distributions without altering the underlying embedding space. In addition, the vectorizer was configured with an ngram_range of (`r cfg$vectorizer$ngram_range`) and a minimum document frequency threshold of min_df = `r cfg$vectorizer$min_df`. Topics are labeled using Claude Haiku 4.6 and then manually revised through close reading of the most representative documents and the highest-scoring terms by two researchers.
+
+The robustness of this identified topic structure is assessed by a set of different checks. Because of the stochastic nature of UMAP, the first check assesses the stability of the topic structure across multiple runs with different random seeds $s \in [0, 19] \cap \mathbb{N}_0$ using the Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI) as pairwise similarity metrics across runs, as well as topic coherence ($C_V$​), diversity and outlier rate. The second check evaluates the sensitivity of the topic structure to variations in key hyperparameters: the minimum cluster size $m \in \{5, 10, 15, 20, 30, 50\}$ as well as the number of nearest neighbors $k \in \{2, 5, 10, 15, 30, 50\}$ and output dimensions $d \in \{2, 5, 10, 15, 20\}$, assessed by topic coherence, diversity, and outlier rate.
+
+To ensure a high level of transparency and reproducibility, this study uses a fully automated end-to-end pipeline controlled by the workflow management system Snakemake [@mölder2025]. The pipeline covers the entire analysis process: from the automated download of the dataset through data preprocessing, BERTopic modeling and its robustness checks, and statistical analysis, all the way to the rendering of this paper, which automatically incorporates its graphics and figures from the analysis. Most of this pipeline is implemented using Python 3.13, while R 4.6.0 is used for downstream statistical analysis and visualization of model results and Quarto for dynamic reporting. The code is available in a public GitHub repository...
+
+## Operationalization
+
+Two complementary approaches are employed to analyze temporal dynamics. First, the general trajectory of attention regarding the topic of AI is examined based on the annual proportion of AI-related speeches per parliamentary group; this enables the identification of empirically observable shifts in attention that correspond to the concept of "punctuations" (abrupt changes) in Punctuated Equilibrium Theory (PET). These observed shifts subsequently serve as the basis for defining the analysis periods. Second, the thematic composition of the AI ​​discourse within each parliamentary group is continuously tracked using a moving average to smooth out annual fluctuations ("noise"). The resulting discrete time periods also serve as the basis for a cross-sectional comparison of thematic priorities.
+
+To assess party-political variation in thematic emphasis, the internal distribution of issue salience is operationalized as the relative share of AI-related speeches a parliamentary group devotes to a given topic: $s_{p,k,t} = \frac{n_{p,k,t}}{\sum_{k'} n_{p,k',t}} \times 100$, where $n_{p,k,t}$ denotes the number of AI-related speeches of parliamentary group $p$ assigned to topic $k$ in period $t$. To identify whether a group places disproportionate emphasis on a particular topic, $s_{p,k,t}$​ is compared against the cross-group average $\bar{s}_{k,t} = \frac{1}{P} \sum_p s_{p,k,t}$​. Systematic deviations from this average are interpreted as reflecting the issue priorities of parliamentary groups, in line with the logic of Issue Competition Theory. However, since the unweighted cross-group average can be distorted by parliamentary groups with few speeches, the corpus-wide topic share for each period​ is additionally reported as a reference for the party-system agenda.
+
+```{=html}
+<!--
+The robustness of this identified topic structure is assessed by a set of different checks. Because of the stochastic nature of UMAP, the first check assesses the stability of the topic structure across multiple runs with different random seeds $s \in [0, 19] \subset \mathbb{N}_0$, using the Adjusted Rand Index ($ARI$) and Normalized Mutual Information ($NMI$) as pairwise similarity metrics across runs, as well as topic coherence ($C_V$​), diversity, and outlier rate. The second check evaluates the sensitivity of the topic structure to variations in three key hyperparameters following @barakeh2025: the minimum cluster size $m \in \{5, 10, 15, 20, 30, 50\}$, which controls the granularity of HDBSCAN clustering and thereby indirectly determines the number of topics [@mcinnes2017]; the number of nearest neighbors $k \in \{5, 10, 15, 30, 50\}$, which governs the balance between local and global structure in the UMAP projection [@mcinnes2018]; and the number of output dimensions $d \in \{2, 5, 10, 15, 20\}$, which determines the dimensionality of the reduced embedding space passed to HDBSCAN [@mcinnes2018umap]. All three sensitivity checks are assessed by topic coherence, diversity, and outlier rate.
+-->
+```
+
+# Results
+
+The following section presents the empirical findings in three steps. First, the longitudinal development of AI's salience in Bundestag debates is examined through the share of AI-related speeches over time. Second, the thematic structure of AI discourse is analyzed based on the topics identified through BERTopic modeling, including their temporal dynamics. Third, systematic variation in topic prevalence across parliamentary groups is examined to assess party-political differences in how AI is discussed in two time periods. Together, these three analytical steps address the study's research question regarding thematic patterns in AI-related parliamentary speeches and their variation over time and across political actors.
+
+## AI on the Parliamentary Agenda
+
+```{r, echo=FALSE}
+#| label: fig-ai-trend
+#| fig-cap: " Share of AI-related speeches as a proportion of all plenary speeches per year, disaggregated by parliamentary group. Vertical dotted lines mark the adoption of Germany's National AI Strategy (KI-Strategie, late 2018) and the public release of ChatGPT (late 2022). The dashed black line represents the aggregate trend across all groups (Total). Government denotes speeches delivered by members of the federal government (ministers, state secretaries) who are not assigned to a parliamentary group in the corpus."
+#| fig-width: 6
+#| fig-height: 3.5
+#| out-width: "100%"
+knitr::include_graphics("../Analysis/Plots/ai_trend_relative.png")
+```
+
+@fig-ai-trend displays the share of AI-related speeches as a proportion of all plenary speeches per year. The data reveal three distinct phases consistent with a punctuated equilibrium dynamic. In 2015, the first speech mentioning AI was delivered in the Bundestag. Further speeches followed in 2016 and 2017. However, prior to 2018, AI was virtually absent from parliamentary debate across all groups, with its share consistently below 0.5%. A first punctuation occurred 2018, coinciding with the publication of Germany's National AI Strategy, pushing overall attention to approximately 2.5%. This peak was most pronounced for CDU/CSU, which exceeded 3%, while other groups clustered more tightly around the aggregate trend. A decline followed across all groups between 2019 and 2022, suggesting a return toward equilibrium after the initial policy stimulus — a pattern consistent with PET's account of attention dynamics following external influences. A second, steeper punctuation is visible from 2023 onward, following ChatGPT's release in late 2022, with aggregate attention surpassing the 2018-2019 peak by 2025. The post-2022 surge appears more broadly distributed across groups than the first, with SPD and CDU/CSU leading but all groups participating. One notable exception is Die Linke, which consistently fell below the aggregate trend throughout the entire observation period, suggesting a comparatively low prioritization of AI as a parliamentary topic. Having established the temporal dynamics of AI attention, the analysis turns to the thematic structure of AI-related discourse.
+
+These three phases correspond to the analytical periods adopted in this study: a baseline period prior to 2018, a first attention surge from 2018 to 2022, and a second surge from 2023 onward. The boundaries are empirically confirmed by the observed dynamics: 2018 marks the onset of the first steep increase in AI-related speech, while 2022 represents the trough between the two surges, with attention reaching its lowest point before the post-ChatGPT rise. Given that the baseline period yields only seven AI-related speeches in total, it is excluded from the cross-sectional analysis of party-political variation as the group-level counts are too small to permit meaningful interpretation (@tbl-descriptive-2).
+
+```{r}
+#| label: tbl-descriptive-2
+#| tbl-cap: "Number of AI-related speeches by parliamentary group and analytical period."
+#| echo: false
+
+n_table <- n_per_frak_phase |>
+  mutate(redner_fraktion = replace_na(redner_fraktion, "Other/No faction"),
+         redner_fraktion = if_else(redner_fraktion == "fraktionslos", "Non-attached", redner_fraktion) ) |> 
+  bind_rows(
+    tibble(
+      redner_fraktion = "Total",
+      `2015-2017` = sum(n_per_frak_phase$`2015-2017`, na.rm = TRUE),
+      `2018-2022` = sum(n_per_frak_phase$`2018-2022`, na.rm = TRUE),
+      `2023-2025` = sum(n_per_frak_phase$`2023-2025`, na.rm = TRUE),
+      Total = sum(n_per_frak_phase$Total, na.rm = TRUE)
+    )
+  )
+
+n_table |>
+  kable(
+    format = "latex",
+    booktabs = TRUE,
+    linesep = ""
+  ) |>
+  kable_styling(
+    latex_options = "HOLD_position",
+    font_size = 9,
+    full_width = FALSE
+  ) |>
+  row_spec(nrow(n_table) - 1, hline_after = TRUE, extra_latex_after = "%") |>
+  row_spec(nrow(n_table), bold = TRUE) 
+
+```
+
+## Thematic Structure of AI Discourse
+
+The topic model identified 14 topics. @tbl-topic-overview provides an overview of all topics, their top terms, and their share of the AI-related subcorpus.
+
+```{r}
+#| echo: false
+ 
+topic_table <- topic_info |>
+  mutate(
+    top_terms = purrr::map_chr(
+      Representation,
+      \(x) paste(x[1:3], collapse = ", ")
+    ),
+    share = Count / sum(Count),
+    share_fmt = scales::percent(share, accuracy = 0.1)
+  ) |>
+  select(
+    Topic,
+    Label = CustomName,
+    `Top Terms` = top_terms,
+    N = Count,
+    Share = share_fmt
+  ) |>
+  arrange(Topic)
+
+```
+
+Notably, only one topic — `r topic_info$CustomName[3]` (Topic 1, `r topic_table$Share[3]`) — treats AI as its primary subject, encompassing dedicated parliamentary debates about AI governance, regulatory frameworks, and the work of the Enquete-Kommission on AI, including discussions around Germany's National AI Strategy of 2018. This topic exhibits considerable thematic breadth, touching on aspects of `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]`, economic competitiveness, European regulation, or labor market implications, reflecting the cross-cutting nature of AI governance as a policy issue. The most prevalent topic embeds AI within broader digitalization discourse, with AI as one element among others: `r topic_info$CustomName[2]` (Topic 0, `r topic_table$Share[2]`). `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` (Topic 2, `r topic_table$Share[4]`) covers public investment in AI research within the wider context of science policy and its use cases in education. This pattern — AI as an embedded element rather than primary subject — characterizes the majority of topics identified in this study.
+
+```{r}
+#| tbl-cap: "Thematic topics identified in AI-related Bundestag speeches (2015-2025)."
+#| label: tbl-topic-overview
+#| echo: false
+
+kable(
+  topic_table,
+  booktabs = TRUE,
+  linesep = "",
+  align = c("c", "l", "l", "r", "r"),
+) |>
+kable_styling(
+  latex_options = c("HOLD_position"),
+  font_size = 9,
+  full_width = FALSE
+) |>
+column_spec(1, width = "0.5cm") |>
+column_spec(2, width = "4cm") |>
+column_spec(3, width = "5cm") |>
+column_spec(4, width = "1cm") |>
+column_spec(5, width = "1.2cm")
+
+```
+
+The remaining topics reflect AI's presence across a range of specialized policy domains. `r topic_info$CustomName[6]` (Topic 4, `r topic_table$Share[6]`) captures speeches in which AI appears in the context of European digital sovereignty and EU-level regulation. `r topic_info$CustomName[7]` (Topic 5, `r topic_table$Share[7]`) proved thematically heterogeneous upon close reading, but shared a common focus on freedom of speech and AI-related risks for publishers. `r topic_info$CustomName[8]` (Topic 6, `r topic_table$Share[8]`), `r topic_info$CustomName[10]` (Topic 8, `r topic_table$Share[10]`), and `r topic_info$CustomName[11]` (Topic 9, `r topic_table$Share[11]`) represent security and defence-related contexts. The last one includes AI-use through police authorities and surveillance capacities. `r topic_info$CustomName[9]` (Topic 7, `r topic_table$Share[9]`) addresses AI's implications for employment and vocational training. Four smaller topics — `r topic_info$CustomName[12]` (Topic 10), `r topic_info$CustomName[13]` (Topic 11), `r topic_info$CustomName[14]` (Topic 12), and `r topic_info$CustomName[15]` (Topic 13) — each accounts for less than 2% of speech segments and reflects sector-specific applications of AI. Upon close reading, `r topic_info$CustomName[15]` (Topic 13) proved to be thematically incoherent — a result of the joint placement of transport and digitalization within the same ministry. It is therefore excluded from the subsequent analysis of party-political variation in thematic emphasis, but retained in the temporal visualizations.
+
+```{r, echo=FALSE}
+#| fig-cap: "Relative share of specific subtopics within each party group's semi-annual AI discourse. Data is smoothed using a moving average with a 2.5-year total window (current half-year ±1 year) to mitigate seasonal noise. Vertical dotted lines mark key milestones: the adoption of the German AI Strategy (late 2018) and the release of ChatGPT (late 2022)."
+#| label: fig-topic-area
+#| fig-width: 6
+#| fig-height: 3.5
+#| out-width: "100%"
+
+knitr::include_graphics("../Analysis/Plots/temporal_dynamics_ai_topics_stratified.png")
+```
+
+## Party-Political Variation in Thematic Emphasis
+
+In the early phase prior to 2018, AI-related speeches in parliament were very rare across all parliamentary groups. The discourse was largely homogeneous and took place predominantly in the context of debates on digitalization.
+
+Starting in 2018, the year Germany’s National AI Strategy was published, the thematic composition diversified across all parliamentary groups, as shown in @fig-topic-area. From 2018 to 2022, Die Linke and Die Grünen focused on research funding as well as `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]`, a trend that declined during the transition to the post-ChatGPT phase. The AfD strongly emphasized `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` at the start of the Strategy phase, though this declined in favor of discussions on digitalization and agriculture. The CDU/CSU, SPD, and FDP, on the other hand, showed a relatively stable distribution of topics during this phase.
+
+In the post-ChatGPT phase, the topic distribution for the CDU/CSU remained relatively stable, though issue salience shifted toward smaller topics. For the SPD, `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` gained attention while `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` nearly disappeared by 2025. The Greens and the AfD showed the same trend. For the FDP, `r topic_info$CustomName[topic_info$CustomName == "Economy & Key Technologies"]` became the overwhelmingly dominant topic. It is important to note here that, following the 2025 election, the FDP was forced to leave the Bundestag; consequently, a smaller number of speeches can exert a significant influence on the dominance of this topic. For Die Linke as well, `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` declined, while the digitalization discourse increased and `r topic_info$CustomName[topic_info$CustomName == "Military & Drones"]` also appeared for the first time as minor topics.
+
+```{=html}
+<!--
+@fig-topic-area displays the thematic composition of AI-related parliamentary speech over time. In the early years of the observation period, when overall AI attention was still low, Regulation and Governance dominated the discourse. From 2018 onward, the thematic composition diversified substantially, with Research Funding, Economy & Key Technologies, and Digitalization & Strategy gaining considerable shares. The latter has remained the largest single topic throughout the observation period, reflecting AI's increasing embeddedness in broader digitalization discourse. Following ChatGPT's release in late 2022, the post-2022 surge in AI attention was broadly distributed across existing thematic frames rather than driven by the emergence of new discourse topics.
+
+-->
+```
+
+```{r, echo=FALSE}
+#| label: fig-heatmap
+#| fig-cap: "Row shares do not sum to 100% as the outlier cluster and the incoherent Mobility & Infrastructure topic are excluded from display but retained in the denominator."
+#| fig-width: 6
+#| fig-height: 7
+#| out-width: "100%"
+
+
+heat_plots <- readRDS("../Analysis/Plots/heat_plots.rds")
+
+heat_plots[["2018-2022"]] / heat_plots[["2023-2025"]] +
+  plot_annotation(title = "Share of AI-related speeches per topic",
+  theme = theme(plot.title = element_text(size = 9)))
+```
+
+In both periods, `r topic_info$CustomName[2]` and `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` together account for the largest share of AI-related discourse. However, their relative weight shifted markedly between periods. In the following, values are reported as cross-group mean / total share. `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` declined from 27.1%/ 23% in 2018-2022 to 13.8%/12.9% in 2023-2025, while `r topic_info$CustomName[2]` rose modestly from 20.3%/19.6% to 21.2%/21.5%. `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` similarly declined from 16.5%/17.7% to 12.7%/13.9%. Several topics that played only a marginal role in the first period gained visibility in the second: `r topic_info$CustomName[topic_info$CustomName == "Military & Drones"]` doubled from 2.5%/2.3% to 5.1%/5.6%, `r topic_info$CustomName[7]` rose from 2.2%/1.9% to 7.3%/6.3%, and `r topic_info$CustomName[topic_info$CustomName == "Internal Security & Surveillance"]` grew from 1.6%/1.1% to 4.4%/4.1%. `r topic_info$CustomName[topic_info$CustomName == "Economy & Key Technologies"]` remained stable across both periods (10.5%/11.3% and 10.2%/11.5% respectively), suggesting that the economic framing of AI was a consistent feature of parliamentary discourse throughout the observation period.
+
+In the 2018-2022 strategy phase, thematic emphasis varied substantially across parliamentary groups, consistent with the Issue Competition Theory expectation that parties emphasize different dimensions of AI. The greatest cross-group variance is observed in `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` (mean: 27.1%), where Die Linke devoted a disproportionately large share of its AI discourse to regulatory frameworks (46.2%), nearly double the cross-group average. By contrast, center-right parties systematically emphasized input-side factors of technological innovation: both the FDP (25.4%) and CDU/CSU (19.5%) exceeded the cross-group mean for `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` (16.5%), with the CDU/CSU additionally recording an above-average share for `r topic_info$CustomName[topic_info$CustomName == "Europe & EU"]` (11.0% versus mean: 4.0%). The SPD largely tracked the cross-party baseline across most topics. The remaining opposition parties used the strategy phase to establish distinct thematic niches: Die Grünen concentrated on `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` (26.2%) and `r topic_info$CustomName[2]` (23.0%), while the AfD diverged most sharply from the aggregate pattern through an outsized share for `r topic_info$CustomName[topic_info$CustomName == "Agriculture & Food"]` (8.8% versus mean: 1.7%) and an above-average emphasis on `r topic_info$CustomName[2]` (24.6%) at the expense of regulatory engagement.
+
+Following the generative AI shock of late 2022, the cross-group pattern is characterized by a dual dynamic of macro-convergence and niche diversification. On the convergence side, `r topic_info$CustomName[2]` solidified as the dominant discursive anchor for most groups — most notably Die Grünen (28.3%) and Die Linke (28.6%), the latter undergoing the most dramatic temporal realignment of all groups, having previously concentrated nearly half its AI discourse on regulatory frameworks. On the divergence side, systematic deviations from the cross-group pattern persisted. The FDP represents the most idiosyncratic case: it was, together with the CDU/CSU, the only group for which `r topic_info$CustomName[2]` did not serve as the primary discursive anchor, collapsing to just 6.7% (vs. mean: 21.2%). Instead, the FDP maintained a comparatively strong emphasis on `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` (20.0% versus mean: 13.8%) and recorded above-average shares for both `r topic_info$CustomName[topic_info$CustomName == "Agriculture & Food"]` (10.0% versus mean: 2.5%) and `r topic_info$CustomName[7]` (10.0% versus mean: 7.3%). A broader trend toward civil liberties framing is visible across parties: All party groups increased their emphasis on `r topic_info$CustomName[7]` relative to the previous period, alongside growing attention to `r topic_info$CustomName[topic_info$CustomName == "Internal Security & Surveillance"]` except the AfD (1.8% vs 0%). `r topic_info$CustomName[topic_info$CustomName == "Military & Drones"]` is dominated by CDU/CSU (9.4%) and Die Linke (8.6%), though SPD and FDP also increased their emphasis. The AfD is completely absent from European frameworks (0.0% for `r topic_info$CustomName[topic_info$CustomName == "Europe & EU"]`) and concentrates its discourse on `r topic_info$CustomName[2]` (25.0%) and `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` (20.8%), isolating itself from the transnational dimensions of AI governance that featured more prominently in other groups' discourse.
+
+# Discussion
+
+## Temporal Dynamics and Embeddedness of AI Discourse
+
+The first theoretical expectation of this study that political attention toward emerging technologies evolves in a discontinuous and non-linear manner finds strong empirical confirmation. The identified temporal pattern of parliamentary contributions regarding AI aligns precisely with the predictions of Punctuated Equilibrium Theory. Prior to 2015, AI was not discussed in the Bundestag at all. From 2015 to 2017, AI remained an absolute niche topic. Only thereafter do two distinct punctuations become apparent: a steep surge coinciding with the adoption of Germany’s National AI Strategy in 2018, which subsequently leveled off, followed by another surge after the release of ChatGPT in late 2022. This pattern mirrors the findings of @suter2025 in their cross-country analysis, which likewise noted a "steep increase in attention following the release of ChatGPT"; however, this study offers an expanded temporal perspective specifically tailored to the German parliamentary deliberative space, extending the study period back to 2015 and additionally addressing differences across parliamentary groups.
+
+This shift between the two analytically compared periods reveals a pivotal change in the manner in which AI enters parliamentary discourse. During the period from 2018 to 2022, the dominant thematic domain within the AI ​​discourse was `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]`, wherein artificial intelligence itself constituted the primary subject. This topic is, however, multifaceted, allowing other issues to intersect with it. During this period, a space for discussion emerged in which the implications of AI were viewed more strongly as a central focus of policy-making. The post-ChatGPT phase (2023-2025), by contrast, exhibits a strikingly different pattern. Despite the absolute increase in attention devoted to the subject of AI, the thematic distribution has shifted: The share of `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` within the AI ​​discourse declined to 13.8% (cross-group mean) and 12.9% (total share), while the realm of `r topic_info$CustomName[2]` rose to a cross-group mean/total share of 21.2%, and numerous smaller topics gained in importance. Crucially, only a single theme — `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` — treats AI as its primary, central subject. All other thematic fields (`r topic_info$CustomName[2]`, `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]`, `r topic_info$CustomName[topic_info$CustomName == "Economy & Key Technologies"]`, `r topic_info$CustomName[topic_info$CustomName == "Military & Drones"]`, etc.) merely embed AI as a secondary element within broader political spheres of action. This reveals a fundamental shift in discursive framing: Since the advent of ChatGPT, AI has functioned — relatively speaking — less as a standalone subject and acts instead as a more diffuse technological element permeating existing policy fields. Thus, two structural forms of AI discourse can be distinguished: (1) the issue-centric discourse, in which artificial intelligence constitutes the primary thematic focus and determines the argumentative structure of the discourse (prior to 2023); and (2) the issue-embedded AI discourse, in which AI appears as an application, tool, or aspect within domain-specific political considerations (from 2023 onward). This temporal shift — from the relative dominance of the first form to the hegemony of the second — is theoretically notable: According to Issue Competition Theory, issues tend to overlap — a phenomenon that can indeed be confirmed here. However, the temporal shift exemplified by AI demonstrates that, despite comparable issue salience, an issue need not necessarily manifest as a standalone topic. In the case of AI, technological change has resulted in the subject being distributed much more widely across existing political discourses as a factor to be taken into account.
+
+## Party-Political Differentiation: A Party-System Agenda with Strategic Niche Integration
+
+The systematic variation in thematic priorities across parliamentary groups demonstrates both the existence of a party-system agenda and the persistence of party-specific niche strategies regarding the integration of AI into political discourse. This dual dynamic illustrates the interplay between the predictions of Issue Competition Theory and the structural conditions governing agenda-setting.
+
+In the 2018-2022 and 2023-2025 periods, respectively, the areas of `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` and `r topic_info$CustomName[2]` emerged as dominant across all parliamentary groups; they define a cross-party core agenda addressed by all political actors. Following Issue Competition Theory, this can be interpreted as the party-system agenda: parties cannot simply ignore dominant issues but must instead respond to them, thereby creating a "common denominator" of parliamentary attention.
+
+At the same time, however, parties systematically integrate AI into specific, narrower policy domains — a practice that can be interpreted as aligning with their own distinct political profiles.
+
+During the period 2018-2022:
+
+Die Linke placed a disproportionate emphasis on `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` (46.2% compared to an average of 27.1%), while remaining below average in terms of `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` — this suggests that Die Linke is more focused on social protection than on accelerating innovation. The FDP and CDU/CSU accorded a higher priority to `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` (25.4% and 19.5%, respectively, compared to an average of 16.5%); this may reflect the innovation discourse of the center-right, which focuses on state-enabled innovation. The AfD concentrated on the `r topic_info$CustomName[topic_info$CustomName == "Agriculture & Food"]` sector (8.8% compared to an average of 1.7%), while remaining below average regarding European frameworks. The last one could be due to their national stance. Die Grünen maintained a balance between `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` (26.2%) on the one hand, and `r topic_info$CustomName[2]` (23.0%) on the other; this could be interpreted as a dual objective: combining the precautionary principle with progressive modernization.
+
+These differences persist — notwithstanding the shared fundamental thematic agenda. In other words, the emergence of an agenda at the party-system level does not eliminate partisan differentiation; rather, it establishes the framework within which such differentiation occurs: While parties are compelled to address the issues of digitalization and regulation (the "system agenda"), they strategically place differing emphases on sectoral fields of application, governance philosophies, or implementation priorities — always in alignment with their respective overarching political profiles.
+
+Post 2023, this pattern intensified. The macro-convergent alignment toward Digitalization & Strategy as the dominant topic of reference reflects the agenda-setting pressure exerted by the "ChatGPT shock" — virtually all parliamentary groups (Die Grünen: 28.3%; Die Linke: 28.6%; SPD: 20.8%) assigned a higher priority to this topic. Nevertheless, niche differentiation not only persisted but actually became more pronounced. The FDP serves as the clearest example of this: as the only party to do so, it failed to place greater weight on the topic of `r topic_info$CustomName[2]` (the share of which dropped to 6.7% after 2023); instead, it maintained an above-average emphasis on  `r topic_info$CustomName[topic_info$CustomName == "Regulation & Governance"]` (20.0% compared to an average of 13.8%) — flanked by a focus specific to the party on `r topic_info$CustomName[topic_info$CustomName == "Agriculture & Food"]` (10.0% compared to an average of 2.5%). The AfD completely abandoned AI discourse within the context of `r topic_info$CustomName[topic_info$CustomName == "Europe & EU"]` (0.0% after 2023, a decline of 3.5%), concentrating instead on Digitalization & Strategy (25.0%) and `r topic_info$CustomName[topic_info$CustomName == "Research Funding"]` (20.8%) — a ​​positioning that isolates the party from transnational AI governance.
+
+This reveals a deeper theoretical insight: even intense agenda-setting pressure does not homogenize party positions but rather produces a pattern of constrained differentiation — parties converge on dominant frames while simultaneously seeking to distinguish themselves through selective emphasis on domain-specific applications where they can claim distinct competence or align AI with their established issue priority. The party-system agenda thus functions not as a suppressant of party competition but as its structuring constraint: parties must compete within the bounds of recognized issue dimensions while strategically selecting subdomains.
+
+## Future Research Directions
+
+Future research could expand on the findings of this study in several ways. First, a quantitative stance detection approach would yield insights into how parties position themselves within specific topics and whether they perceive AI primarily as an opportunity or a risk. Second, a more in-depth qualitative analysis of a stratified sample of the parliamentary speeches would deepen our understanding of the substantive content underlying the topic labels. Third, a comparative analysis of topic structures and temporal dynamics across the EU and other parliaments could clarify whether the observed patterns are specific to Germany or reflect broader legislative trends. Fourth, a network analysis linking speakers across various topics over time could reveal whether the same actors consistently emphasize specific aspects of a topic or whether the roles of stakeholders shift strategically. Finally, integrating discourses from the media and government policy spheres could test, for example, whether parliamentary discourse leads or lags behind these other domains, thereby shedding light on the dynamics of agenda-setting processes.
+
+# Conclusion
+
+This study provides a systematic longitudinal analysis of the AI ​​discourse in the German Bundestag from 2015 to 2025, documenting both the temporal dynamics and the partisan differences in thematic prioritization. The empirical findings support the Punctuated Equilibrium Theory: political attention toward AI evolved discontinuously, marked by two distinct turning points coinciding with the National AI Strategy of 2018 and the surge of generative AI in 2023. Simultaneously, the Issue Competition Theory explains the systematic partisan differentiation in thematic prioritization: parties emphasized dimensions of AI that aligned with their political positions and thematic commitments. In doing so, they are subject to a party-system agenda to which they must respond — an agenda, however, that does not preclude thematic differentiation.
+
+The AI discourse can only be fully understood through the theoretical distinction between 'issue-centric' and 'issue-embedded' discourse. When the AI ​​discourse gained momentum in 2018, it was more issue-centric; in the post-ChatGPT phase beginning in 2023, AI was discussed stronger as an embedded issue.
+
+# Limitations
+
+Two limitations warrant acknowledgment. First, the corpus construction prioritizes precision over recall: only speeches containing explicit AI-related terms are included, while speeches addressing related phenomena such as algorithmic decision-making or automation without naming AI directly are excluded. Second, each speech is assigned to a single dominant topic, which may obscure within-speech thematic overlap and underestimate the degree to which topics co-occur in parliamentary discourse.
+
+# References
+
+::: {#refs}
+:::
+
+\newpage
+
+# Appendix
+
+## Topics and Labels
+
+```{r}
+#| label: tbl-topics
+#| echo: false
+
+topic_table <- topic_info |>
+  arrange(Topic) |>
+  mutate(
+    Keywords = sapply(Representation, function(x) paste(unlist(x)[1:10], collapse = ", "))
+  ) |>
+  select(Topic, CustomName, Count, Keywords) |>
+  rename(
+    "ID"           = Topic,
+    "Label"        = CustomName,
+    "Chunks"       = Count,
+    "Top Keywords" = Keywords
+  )
+
+kable(topic_table,
+      booktabs = TRUE,
+      caption  = "Topic Labels and Top Keywords",
+      col.names = c("ID", "Label", "Chunks", "Top Keywords"),
+      linesep  = "") |>
+  kable_styling(
+  font_size = 9,
+  full_width = FALSE
+) |>
+  column_spec(1, width = "0.5cm") |>
+  column_spec(2, width = "2.5cm") |>
+  column_spec(3, width = "1cm") |>
+  column_spec(4, width = "7cm")
+```
+
+\FloatBarrier
+
+## Robustness Checks
+
+```{r}
+#| label: tbl-robustness-load
+#| include: false
+#| echo: false
+
+stability  <- read_csv("../Analysis/robustness/stability_per_run.csv", show_col_types = FALSE)
+pairwise   <- read_csv("../Analysis/robustness/pairwise_ari_nmi.csv", show_col_types = FALSE)
+mcs_sens   <- read_csv("../Analysis/robustness/min_cluster_size_sensitivity.csv", show_col_types = FALSE)
+neighbors  <- read_csv("../Analysis/robustness/n_neighbors_sensitivity.csv", show_col_types = FALSE)
+components <- read_csv("../Analysis/robustness/n_components_sensitivity.csv", show_col_types = FALSE)
+```
+
+```{r}
+#| label: tbl-robustness-helper
+#| include: false
+#| echo: false
+fmt_sensitivity <- function(df, param_col, caption_text) {
+  main_rows <- which(df$is_main_model)
+
+  df |>
+    mutate(across(c(outlier_rate, coherence_cv, diversity), ~round(., 3))) |>
+    select(-is_main_model) |>
+    rename(
+      `N Topics`       = n_topics,
+      `Outlier Rate`   = outlier_rate,
+      `Coherence (Cv)` = coherence_cv,
+      Diversity        = diversity
+    ) |>
+    kable(booktabs = TRUE, format = "latex") |>
+    row_spec(main_rows, bold = TRUE)
+}
+```
+
+```{r}
+#| label: tbl-robustness-stability
+#| tbl-cap: "Topic model quality metrics across 20 random seeds."
+#| echo: false
+
+stability_table <- stability |>
+  mutate(
+    across(
+      c(outlier_rate, coherence_cv, diversity),
+      ~round(.x, 3)
+    )
+  ) |>
+  rename(
+    Seed = seed,
+    `N Topics` = n_topics,
+    `Outlier Rate` = outlier_rate,
+    `Coherence (Cv)` = coherence_cv,
+    Diversity = diversity
+  )
+
+kable(stability_table,
+      format = "latex",
+      booktabs = TRUE) |>
+  kable_styling(font_size = 9)
+```
+
+```{r}
+#| label: tbl-robustness-pairwise
+#| tbl-cap: "Pairwise similarity across runs (N = 190 pairs)."
+#| echo: false
+
+pairwise |>
+  summarise(
+    across(c(ARI, NMI), list(
+      Mean   = ~round(mean(.), 3),
+      Median = ~round(median(.), 3),
+      SD     = ~round(sd(.), 3),
+      Min    = ~round(min(.), 3),
+      Max    = ~round(max(.), 3)
+    ))
+  ) |>
+  pivot_longer(everything(),
+               names_to  = c("Metric", ".value"),
+               names_sep = "_") |> 
+
+  kable(
+      format = "latex",
+      booktabs = TRUE) |>
+  kable_styling(font_size = 9)
+```
+
+```{r}
+#| label: tbl-robustness-mcs
+#| tbl-cap: "Sensitivity to minimum cluster size (main model highlighted)."
+#| echo: false
+
+fmt_sensitivity(
+  mcs_sens,
+  "min_cluster_size",
+  "Sensitivity to minimum cluster size (main model: not present in this grid)."
+)
+```
+
+```{r}
+#| label: tbl-robustness-neighbors
+#| tbl-cap: "Sensitivity to number of UMAP nearest neighbors (main model highlighted)."
+#| echo: false
+
+fmt_sensitivity(
+  neighbors,
+  "n_neighbors",
+  "Sensitivity to number of UMAP nearest neighbors (main model: k = 12, bold)."
+)
+```
+
+```{r}
+#| label: tbl-robustness-components
+#| tbl-cap: "Sensitivity to number of UMAP output dimensions (main model highlighted)."
+#| echo: false
+
+fmt_sensitivity(
+  components,
+  "n_components",
+  "Sensitivity to number of UMAP output dimensions (main model: d = 12, bold)."
+)
+```
+
+\clearpage
+\newpage
+
+## AI Declaration
+
+Generative AI was used to assist in the preparation of this paper, particularly for literature research, coding, as a methodological tool, and for linguistic text editing (grammar, spelling, style).
+
+The conceptualization of the content, data analysis, and argumentation were carried out independently.
+
+# Selbstständigkeitserklärung {.unnumbered}
+
+Hiermit erkläre ich, dass ich die vorliegende Arbeit selbstständig und ohne fremde Hilfe verfasst und keine anderen Hilfsmittel als angegeben verwendet habe. Insbesondere versichere, dass ich alle wörtlichen und sinngemäßen Übernahmen aus anderen Werken als solche kenntlich gemacht habe.
+
+Leipzig, 18.08.2026,
+
+Christopher Berberich
